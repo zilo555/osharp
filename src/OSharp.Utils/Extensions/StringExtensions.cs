@@ -384,7 +384,7 @@ namespace OSharp.Extensions
             value.CheckNotNull("value");
             return new string(value.Reverse().ToArray());
         }
-        
+
         /// <summary>
         /// 单词变成单数形式
         /// </summary>
@@ -474,6 +474,40 @@ namespace OSharp.Extensions
                 default:
                     return false;
             }
+        }
+
+        /// <summary>
+        /// 将16进制字符串转为数值
+        /// </summary>
+        public static int ToDec(this string hex)
+        {
+            if (string.IsNullOrEmpty(hex))
+            {
+                throw new ArgumentException("16进制字符串不能为空", nameof(hex));
+            }
+
+            // 移除可能的前缀（如0x, 0X）
+            hex = hex.Trim();
+            if (hex.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
+            {
+                hex = hex.Substring(2);
+            }
+
+            // 验证是否为有效的16进制字符串
+            if (!hex.All(c => char.IsDigit(c) || (c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f')))
+            {
+                throw new ArgumentException("字符串不是有效的16进制格式", nameof(hex));
+            }
+
+            return Convert.ToInt32(hex, 16);
+        }
+
+        /// <summary>
+        /// 将10进制数值转为16进制字符串
+        /// </summary>
+        public static string ToHex(this int dec, int length = 8)
+        {
+            return dec.ToString($"X{length}");
         }
 
         /// <summary>
