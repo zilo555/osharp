@@ -1,31 +1,45 @@
-﻿using System;
+// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the Apache License, Version 2.0. See License.txt in https://github.com/aspnet/Logging for license information.
+// https://github.com/aspnet/Logging/blob/2d2f31968229eddb57b6ba3d34696ef366a6c71b/src/Microsoft.Extensions.Logging.AzureAppServices/Internal/BatchingLoggerProvider.cs
+
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+
+using OSharp.Logging.RollingFile.Formatters;
 
 
 namespace OSharp.Logging.RollingFile.Internal
 {
-    //power by https://github.com/andrewlock/NetEscapades.Extensions.Logging
-    public abstract class BatchingLoggerProvider : Disposable, ILoggerProvider
+    public abstract class BatchingLoggerProvider : ILoggerProvider, ISupportExternalScope
     {
-        private readonly List<LogMessageEntry> _currentBatch = new List<LogMessageEntry>();
+        private readonly List<LogMessage> _currentBatch = new List<LogMessage>();
         private readonly TimeSpan _interval;
         private readonly int? _queueSize;
         private readonly int? _batchSize;
+        private readonly IDisposable _optionsChangeToken;
 
-        private BlockingCollection<LogMessageEntry> _messageQueue;
+        private BlockingCollection<LogMessage> _messageQueue;
         private Task _outputTask;
         private CancellationTokenSource _cancellationTokenSource;
 
-        protected BatchingLoggerProvider(IOptions<BatchingLoggerOptions> options)
-        {
-            // NOTE: Only IsEnabled is monitored
+        private bool _includeScopes;
+        private IExternalScopeProvider _scopeProvider;
+        private readonly ILogFormatter _formatter;
 
-            var loggerOptions = options.Value;
+        internal IExternalScopeProvider ScopeProvider => _includeScopes ? _scopeProvider : null;
+
+        protected BatchingLoggerProvider(IOptionsMonitor<BatchingLoggerOptions> options, IEnumerable<ILogFormatter> formatters)
+        {
+            // NOTE: Only IsEnabled and IncludeScopes are monitored
+
+            var loggerOptions = options.CurrentValue;
             if (loggerOptions.BatchSize <= 0)
             {
                 throw new ArgumentOutOfRangeException(nameof(loggerOptions.BatchSize), $"{nameof(loggerOptions.BatchSize)} must be a positive number.");
@@ -35,16 +49,52 @@ namespace OSharp.Logging.RollingFile.Internal
                 throw new ArgumentOutOfRangeException(nameof(loggerOptions.FlushPeriod), $"{nameof(loggerOptions.FlushPeriod)} must be longer than zero.");
             }
 
+            var formatterName = (string.IsNullOrEmpty(loggerOptions.FormatterName)
+                ? "simple"
+                : loggerOptions.FormatterName).ToLowerInvariant();
+            var formatter = formatters.FirstOrDefault(x => x.Name == formatterName);
+
+            if (formatter is null)
+            {
+                throw new ArgumentException(
+                    $"Unknown formatter name {formatterName} - ensure custom formatters are registered correctly with the DI container",
+                    nameof(loggerOptions.FormatterName));
+            }
+
+            _formatter = formatter;
             _interval = loggerOptions.FlushPeriod;
             _batchSize = loggerOptions.BatchSize;
             _queueSize = loggerOptions.BackgroundQueueSize;
 
-            Start();
+            _optionsChangeToken = options.OnChange(UpdateOptions);
+            UpdateOptions(options.CurrentValue);
         }
 
-        protected abstract Task WriteMessagesAsync(IEnumerable<LogMessageEntry> messages, CancellationToken token);
+        public bool IsEnabled { get; private set; }
 
-        private async Task ProcessLogQueue(object state)
+        private void UpdateOptions(BatchingLoggerOptions options)
+        {
+            var oldIsEnabled = IsEnabled;
+            IsEnabled = options.IsEnabled;
+            _includeScopes = options.IncludeScopes;
+
+            if (oldIsEnabled != IsEnabled)
+            {
+                if (IsEnabled)
+                {
+                    Start();
+                }
+                else
+                {
+                    Stop();
+                }
+            }
+
+        }
+
+        protected abstract Task WriteMessagesAsync(IEnumerable<LogMessage> messages, CancellationToken token);
+
+        private async Task ProcessLogQueue()
         {
             while (!_cancellationTokenSource.IsCancellationRequested)
             {
@@ -85,7 +135,7 @@ namespace OSharp.Logging.RollingFile.Internal
             {
                 try
                 {
-                    _messageQueue.Add(new LogMessageEntry { Message = message, Timestamp = timestamp }, _cancellationTokenSource.Token);
+                    _messageQueue.Add(new LogMessage { Message = message, Timestamp = timestamp }, _cancellationTokenSource.Token);
                 }
                 catch
                 {
@@ -97,14 +147,11 @@ namespace OSharp.Logging.RollingFile.Internal
         private void Start()
         {
             _messageQueue = _queueSize == null ?
-                new BlockingCollection<LogMessageEntry>(new ConcurrentQueue<LogMessageEntry>()) :
-                new BlockingCollection<LogMessageEntry>(new ConcurrentQueue<LogMessageEntry>(), _queueSize.Value);
+                new BlockingCollection<LogMessage>(new ConcurrentQueue<LogMessage>()) :
+                new BlockingCollection<LogMessage>(new ConcurrentQueue<LogMessage>(), _queueSize.Value);
 
             _cancellationTokenSource = new CancellationTokenSource();
-            _outputTask = Task.Factory.StartNew<Task>(
-                ProcessLogQueue,
-                null,
-                TaskCreationOptions.LongRunning);
+            _outputTask = Task.Run(ProcessLogQueue);
         }
 
         private void Stop()
@@ -124,18 +171,23 @@ namespace OSharp.Logging.RollingFile.Internal
             }
         }
 
-        protected override void Dispose(bool disposing)
+        public void Dispose()
         {
-            if (!Disposed)
+            _optionsChangeToken?.Dispose();
+            if (IsEnabled)
             {
                 Stop();
             }
-            base.Dispose(disposing);
         }
 
         public ILogger CreateLogger(string categoryName)
         {
-            return new BatchingLogger(this, categoryName);
+            return new BatchingLogger(this, categoryName, _formatter);
+        }
+
+        void ISupportExternalScope.SetScopeProvider(IExternalScopeProvider scopeProvider)
+        {
+            _scopeProvider = scopeProvider;
         }
     }
 }

@@ -1,25 +1,16 @@
-﻿// -----------------------------------------------------------------------
-//  <copyright file="BatchingLoggerOptions.cs" company="OSharp开源团队">
-//      Copyright (c) 2014-2017 OSharp. All rights reserved.
-//  </copyright>
-//  <site>http://www.osharp.org</site>
-//  <last-editor></last-editor>
-//  <last-date>2017-09-17 21:18</last-date>
-// -----------------------------------------------------------------------
+// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the Apache License, Version 2.0. See License.txt in https://github.com/aspnet/Logging for license information.
+// https://github.com/aspnet/Logging/blob/2d2f31968229eddb57b6ba3d34696ef366a6c71b/src/Microsoft.Extensions.Logging.AzureAppServices/Internal/BatchingLoggerOptions.cs
 
 using System;
 
 
 namespace OSharp.Logging.RollingFile.Internal
 {
-    //power by https://github.com/andrewlock/NetEscapades.Extensions.Logging
-    /// <summary>
-    /// 批量日志记录选项
-    /// </summary>
     public class BatchingLoggerOptions
     {
-        private int? _backgroundQueueSize;
-        private int? _batchSize = 32;
+        private int? _batchSize;
+        private int? _backgroundQueueSize = 1000;
         private TimeSpan _flushPeriod = TimeSpan.FromSeconds(1);
 
         /// <summary>
@@ -41,7 +32,7 @@ namespace OSharp.Logging.RollingFile.Internal
         /// <summary>
         /// Gets or sets the maximum size of the background log message queue or null for no limit.
         /// After maximum queue size is reached log event sink would start blocking.
-        /// Defaults to <c>null</c>.
+        /// Defaults to <c>1000</c>.
         /// </summary>
         public int? BackgroundQueueSize
         {
@@ -59,6 +50,7 @@ namespace OSharp.Logging.RollingFile.Internal
         /// <summary>
         /// Gets or sets a maximum number of events to include in a single batch or null for no limit.
         /// </summary>
+        /// Defaults to <c>null</c>.
         public int? BatchSize
         {
             get { return _batchSize; }
@@ -75,6 +67,18 @@ namespace OSharp.Logging.RollingFile.Internal
         /// <summary>
         /// Gets or sets value indicating if logger accepts and queues writes.
         /// </summary>
-        public bool IsEnabled { get; set; }
+        public bool IsEnabled { get; set; } = true;
+
+        /// <summary>
+        /// Gets or sets a value indicating whether scopes should be included in the message.
+        /// Defaults to <c>false</c>.
+        /// </summary>
+        public bool IncludeScopes { get; set; } = false;
+
+        /// <summary>
+        /// Gets of sets the name of the log message formatter to use.
+        /// Defaults to "simple" />.
+        /// </summary>
+        public string FormatterName { get; set; } = "simple";
     }
 }

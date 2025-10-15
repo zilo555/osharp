@@ -1,24 +1,15 @@
-﻿// -----------------------------------------------------------------------
-//  <copyright file="FileLoggerFactoryExtensions.cs" company="OSharp开源团队">
-//      Copyright (c) 2014-2017 OSharp. All rights reserved.
-//  </copyright>
-//  <site>http://www.osharp.org</site>
-//  <last-editor></last-editor>
-//  <last-date>2017-09-17 21:17</last-date>
-// -----------------------------------------------------------------------
-
 using System;
 
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-using OSharp.Logging.RollingFile;
+using OSharp.Logging.RollingFile.Formatters;
 
 
-//power by https://github.com/andrewlock/NetEscapades.Extensions.Logging
-namespace Microsoft.Extensions.DependencyInjection
+namespace OSharp.Logging.RollingFile
 {
     /// <summary>
-    /// Extensions for adding the <see cref="FileLoggerProvider" /> to the <see cref="ILoggingBuilder" />
+    /// Extensions for adding the <see cref="OSharp.Logging.RollingFile.FileLoggerProvider" /> to the <see cref="ILoggingBuilder" />
     /// </summary>
     public static class FileLoggerFactoryExtensions
     {
@@ -29,9 +20,13 @@ namespace Microsoft.Extensions.DependencyInjection
         public static ILoggingBuilder AddFile(this ILoggingBuilder builder)
         {
             builder.Services.AddSingleton<ILoggerProvider, FileLoggerProvider>();
+            builder.Services.AddSingleton<ILogFormatter, SimpleLogFormatter>();
+#if NETCOREAPP3_0
+            builder.Services.AddSingleton<ILogFormatter, JsonLogFormatter>();
+#endif
             return builder;
         }
-
+        
         /// <summary>
         /// Adds a file logger named 'File' to the factory.
         /// </summary>
@@ -39,10 +34,7 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <param name="filename">Sets the filename prefix to use for log files</param>
         public static ILoggingBuilder AddFile(this ILoggingBuilder builder, string filename)
         {
-            builder.AddFile(options =>
-            {
-                options.FileName = filename;
-            });
+            builder.AddFile(options => options.FileName = filename);
             return builder;
         }
 
