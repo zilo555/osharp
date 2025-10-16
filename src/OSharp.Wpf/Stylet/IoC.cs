@@ -20,14 +20,14 @@ public static class IoC
     /// <summary>
     /// 获取指定服务类型的单个实例
     /// </summary>
-    public static Func<Type, string, object> GetInstance = (service, key) => throw new InvalidOperationException("IoC is not initialized");
+    public static Func<Type, string, object> GetInstance = (_, _) => throw new InvalidOperationException("IoC is not initialized");
 
     /// <summary>
     /// 获取指定服务类型的多个实例
     /// </summary>
-    public static Func<Type, IEnumerable<object>> GetAllInstances = service => throw new InvalidOperationException("IoC is not initialized");
+    public static Func<Type, IEnumerable<object>> GetAllInstances = _ => throw new InvalidOperationException("IoC is not initialized");
 
-    public static Action<object> BuildUp = instance => throw new InvalidOperationException("IoC is not initialized");
+    public static Action<object> BuildUp = _ => throw new InvalidOperationException("IoC is not initialized");
 
     /// <summary>
     /// 获取指定服务类型的单个实例
@@ -62,7 +62,7 @@ public static class IoC
     /// </summary>
     public static void Initialize(IServiceProvider provider)
     {
-        GetInstance = (type, key) => provider.GetService(type);
+        GetInstance = (type, _) => provider.GetService(type);
         GetAllInstances = provider.GetServices;
     }
 }

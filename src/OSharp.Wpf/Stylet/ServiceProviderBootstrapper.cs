@@ -14,11 +14,11 @@ namespace OSharp.Wpf.Stylet;
 
 public abstract class ServiceProviderBootstrapper<TRootViewModel> : BootstrapperBase where TRootViewModel : class
 {
-    private IHostBuilder _hostBuilder;
+    private HostApplicationBuilder _hostBuilder;
     private IHost _host;
     private readonly CancellationTokenSource _cancellationTokenSource = new();
     private TRootViewModel _rootViewModel;
-    protected virtual TRootViewModel RootViewModel => this._rootViewModel ??= (TRootViewModel)this.GetInstance(typeof(TRootViewModel));
+    protected virtual TRootViewModel RootViewModel => _rootViewModel ??= (TRootViewModel)GetInstance(typeof(TRootViewModel));
 
     protected IServiceProvider ServiceProvider { get; private set; }
 
@@ -27,7 +27,9 @@ public abstract class ServiceProviderBootstrapper<TRootViewModel> : Bootstrapper
     /// </summary>
     protected override void OnStart()
     {
-        _hostBuilder = Host.CreateDefaultBuilder();
+        _hostBuilder = Host.CreateApplicationBuilder();
+        _hostBuilder.Environment.EnvironmentName = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")
+            ?? Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") ?? "Production";
     }
 
     /// <summary>
@@ -35,12 +37,10 @@ public abstract class ServiceProviderBootstrapper<TRootViewModel> : Bootstrapper
     /// </summary>
     protected override void ConfigureBootstrapper()
     {
-        _hostBuilder.ConfigureServices((context, services) =>
-        {
-            services.AddSingleton(context);
-            DefaultConfigureIoC(services);
-            ConfigureIoC(services);
-        });
+        _hostBuilder.Services.AddSingleton<IHostApplicationBuilder>(_hostBuilder);
+        DefaultConfigureIoC(_hostBuilder.Services);
+        ConfigureIoC(_hostBuilder.Services);
+
         _host = _hostBuilder.Build();
         ServiceProvider = _host.Services;
         _host.StartAsync(_cancellationTokenSource.Token).GetAwaiter().GetResult();
@@ -53,8 +53,8 @@ public abstract class ServiceProviderBootstrapper<TRootViewModel> : Bootstrapper
     {
         var viewManagerConfig = new ViewManagerConfig()
         {
-            ViewFactory = this.GetInstance,
-            ViewAssemblies = new List<Assembly>() { this.GetType().Assembly }
+            ViewFactory = GetInstance,
+            ViewAssemblies = [GetType().Assembly]
         };
 
         services.AddSingleton<IViewManager>(new ViewManager(viewManagerConfig));
@@ -100,7 +100,7 @@ public abstract class ServiceProviderBootstrapper<TRootViewModel> : Bootstrapper
         catch (Exception ex)
         {
             // 记录日志但不阻止退出
-            System.Diagnostics.Debug.WriteLine($"Error stopping host during exit: {ex.Message}");
+            Debug.WriteLine($"Error stopping host during exit: {ex.Message}");
         }
     }
 

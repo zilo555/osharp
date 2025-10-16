@@ -43,7 +43,7 @@ public abstract class EventHandlerBase<TEventData> : IEventHandler<TEventData> w
     /// <param name="eventData">事件源数据</param>
     /// <param name="cancelToken">异步取消标识</param>
     /// <returns></returns>
-    public virtual Task HandleAsync(IEventData eventData, CancellationToken cancelToken = default(CancellationToken))
+    public virtual Task HandleAsync(IEventData eventData, CancellationToken cancelToken = default)
     {
         if (!CanHandle(eventData))
         {
@@ -56,7 +56,8 @@ public abstract class EventHandlerBase<TEventData> : IEventHandler<TEventData> w
     /// 事件处理
     /// </summary>
     /// <param name="eventData">事件源数据</param>
-    public abstract void Handle(TEventData eventData);
+    public virtual void Handle(TEventData eventData)
+    { }
 
     /// <summary>
     /// 异步事件处理
@@ -64,7 +65,7 @@ public abstract class EventHandlerBase<TEventData> : IEventHandler<TEventData> w
     /// <param name="eventData">事件源数据</param>
     /// <param name="cancelToken">异步取消标识</param>
     /// <returns>是否成功</returns>
-    public virtual Task HandleAsync(TEventData eventData, CancellationToken cancelToken = default(CancellationToken))
+    public virtual Task HandleAsync(TEventData eventData, CancellationToken cancelToken = default)
     {
         return Task.Run(() => Handle(eventData), cancelToken);
     }
