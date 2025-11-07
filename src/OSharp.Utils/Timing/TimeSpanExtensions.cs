@@ -1,4 +1,4 @@
-﻿// -----------------------------------------------------------------------
+// -----------------------------------------------------------------------
 //  <copyright file="TimeSpanExtensions.cs" company="OSharp开源团队">
 //      Copyright (c) 2014-2020 OSharp. All rights reserved.
 //  </copyright>
@@ -53,12 +53,16 @@ namespace OSharp.Timing
         /// <summary>
         /// 时间片倒计时
         /// </summary>
-        public static void CountDown(this TimeSpan ts, Action<TimeSpan> action, int intervalMilliseconds = 1000)
+        public static void CountDown(this TimeSpan ts, Action<TimeSpan> action, int intervalMilliseconds = 1000, Func<bool> breakFunc = null)
         {
             while (ts > TimeSpan.Zero)
             {
+                if (breakFunc != null && breakFunc())
+                {
+                    break;
+                }
                 action(ts);
-                TimeSpan ts2 = TimeSpan.FromMilliseconds(intervalMilliseconds);
+                var ts2 = TimeSpan.FromMilliseconds(intervalMilliseconds);
                 Thread.Sleep(ts2);
                 ts = ts.Subtract(ts2);
             }
@@ -67,10 +71,14 @@ namespace OSharp.Timing
         /// <summary>
         /// 时间片倒计时
         /// </summary>
-        public static async Task CountDownAsync(this TimeSpan ts, Func<TimeSpan, Task> action, int intervalMilliseconds = 1000)
+        public static async Task CountDownAsync(this TimeSpan ts, Func<TimeSpan, Task> action, int intervalMilliseconds = 1000, Func<Task<bool>> breakFunc = null)
         {
             while (ts > TimeSpan.Zero)
             {
+                if (breakFunc != null && await breakFunc())
+                {
+                    break;
+                }
                 await action(ts);
                 TimeSpan ts2 = TimeSpan.FromMilliseconds(intervalMilliseconds);
                 await Task.Delay(ts2);
