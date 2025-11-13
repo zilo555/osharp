@@ -1,4 +1,4 @@
-﻿// -----------------------------------------------------------------------
+// -----------------------------------------------------------------------
 //  <copyright file="DictionaryExtensions.cs" company="OSharp开源团队">
 //      Copyright (c) 2014-2017 OSharp. All rights reserved.
 //  </copyright>
@@ -26,7 +26,7 @@ namespace OSharp.Extensions
         /// <param name="dictionary">要操作的字典</param>
         /// <param name="key">指定键名</param>
         /// <returns>获取到的值</returns>
-        public static TValue GetOrDefault<TKey, TValue>(this IDictionary<TKey, TValue>dictionary, TKey key)
+        public static TValue GetOrDefault<TKey, TValue>(this IDictionary<TKey, TValue> dictionary, TKey key)
         {
             return dictionary.TryGetValue(key, out TValue value) ? value : default(TValue);
         }
@@ -40,13 +40,42 @@ namespace OSharp.Extensions
         /// <param name="key">指定键名</param>
         /// <param name="addFunc">添加值的委托</param>
         /// <returns>获取到的值</returns>
-        public static TValue GetOrAdd<TKey, TValue>(this IDictionary<TKey, TValue>dictionary, TKey key, Func<TValue> addFunc)
+        public static TValue GetOrAdd<TKey, TValue>(this IDictionary<TKey, TValue> dictionary, TKey key, Func<TValue> addFunc)
         {
             if (dictionary.TryGetValue(key, out TValue value))
             {
                 return value;
             }
             return dictionary[key] = addFunc();
+        }
+
+        /// <summary>
+        /// 获取指定键指定类型的值
+        /// </summary>
+        public static T GetValue<T>(this IDictionary<string, object> dictionary, string key)
+        {
+            if (dictionary.TryGetValue(key, out var value))
+            {
+                return value.CastTo<T>();
+            }
+            return default;
+        }
+
+        /// <summary>
+        /// 设置字典中的值，不存在则添加，存在则更新
+        /// </summary>
+        /// <typeparam name="T">值类型</typeparam>
+        /// <param name="dictionary">字典</param>
+        /// <param name="key">键</param>
+        /// <param name="addFunc">添加值的委托</param>
+        /// <param name="updateFunc">更新值的委托</param>
+        public static void SetValue<T>(this IDictionary<string, object> dictionary, string key, Func<T> addFunc, Func<T, T> updateFunc)
+        {
+            object value;
+            value = dictionary.TryGetValue(key, out value)
+                ? updateFunc(value.CastTo<T>())
+                : addFunc();
+            dictionary[key] = value;
         }
     }
 }
