@@ -195,15 +195,15 @@ namespace OSharp.Extensions
         /// <summary>
         /// 用正则表达式截取字符串
         /// </summary>
-        public static string Substring2(this string source, string startString, string endString)
+        public static string SubstringRegex(this string source, string startString, string endString)
         {
-            return source.Substring2(startString, endString, false);
+            return source.SubstringRegex(startString, endString, false);
         }
 
         /// <summary>
         /// 用正则表达式截取字符串
         /// </summary>
-        public static string Substring2(this string source, string startString, string endString, bool containsEmpty)
+        public static string SubstringRegex(this string source, string startString, string endString, bool containsEmpty)
         {
             if (source.IsMissing())
             {
